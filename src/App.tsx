@@ -80,7 +80,15 @@ export default function App() {
 
   // Clock & Alarm states
   const [currentTime, setCurrentTime] = useState(new Date());
-  const [reminders, setReminders] = useState<Reminder[]>([]);
+  const [reminders, setReminders] = useState<Reminder[]>(() => {
+    try {
+      const saved = localStorage.getItem('file_sharer_reminders');
+      return saved ? JSON.parse(saved) : [];
+    } catch (e) {
+      console.error('Failed to parse reminders from localStorage', e);
+      return [];
+    }
+  });
   const [alarmForm, setAlarmForm] = useState({
     title: '',
     time: '',
@@ -121,15 +129,7 @@ export default function App() {
     // Load files
     getMetadataList().then(list => setFiles(list));
 
-    // Load alarms from LocalStorage
-    try {
-      const savedReminders = localStorage.getItem('file_sharer_reminders');
-      if (savedReminders) {
-        setReminders(JSON.parse(savedReminders));
-      }
-    } catch (e) {
-      console.error('Failed to load reminders', e);
-    }
+
 
     // Load Sync Settings
     const config = getSavedSyncConfig();
