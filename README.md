@@ -8,11 +8,14 @@ You can preview the app locally at `http://localhost:5173` or deploy it directly
 
 ## 🖼️ UI Screenshots
 
-| 🌸 Warm Rose Theme | 📁 Integrated File Previews | 🌿 Cozy Sage Theme |
-|:---:|:---:|:---:|
-| ![Warm Rose Theme](./public/screenshots/rose-theme.png) | ![File Previews](./public/screenshots/file-previews.png) | ![Cozy Sage Theme](./public/screenshots/sage-theme.png) |
+### 🌸 Warm Rose Theme
+![Warm Rose Theme](./public/screenshots/rose-theme.png)
 
----
+### 📁 Integrated File Previews
+![File Previews](./public/screenshots/file-previews.png)
+
+### 🌿 Cozy Sage Theme
+![Cozy Sage Theme](./public/screenshots/sage-theme.png)
 
 ## 🌟 Core Features
 
