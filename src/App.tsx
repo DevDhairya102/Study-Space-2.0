@@ -140,6 +140,17 @@ export default function App() {
         anonKey: config.anonKey,
         bucketName: config.bucketName
       });
+      
+      // Auto-sync in the background on mount so new files from other devices appear automatically!
+      setIsSyncing(true);
+      syncWithCloud(config)
+        .then(res => {
+          if (res.success) {
+            setFiles(res.updatedList);
+          }
+        })
+        .catch(err => console.error('Auto-sync error on mount:', err))
+        .finally(() => setIsSyncing(false));
     }
 
     // Read initial Notification state
