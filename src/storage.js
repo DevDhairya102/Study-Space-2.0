@@ -1,28 +1,11 @@
 import { get, set, del } from 'idb-keyval';
-import { createClient, SupabaseClient } from '@supabase/supabase-js';
-
-export interface SharedFile {
-  id: string;
-  name: string;
-  size: number;
-  type: string;
-  uploadedAt: string;
-  category: 'document' | 'photo' | 'video' | 'audio' | 'other';
-  isSynced: boolean;
-  cloudPath?: string;
-}
-
-export interface SupabaseConfig {
-  url: string;
-  anonKey: string;
-  bucketName: string;
-}
+import { createClient } from '@supabase/supabase-js';
 
 const METADATA_KEY = 'file_sharer_metadata';
 const SYNC_CONFIG_KEY = 'file_sharer_sync_config';
 
 // Help helper for category classification
-export function getFileCategory(fileType: string, fileName: string): SharedFile['category'] {
+export function getFileCategory(fileType, fileName) {
   const type = fileType.toLowerCase();
   const name = fileName.toLowerCase();
   
@@ -48,7 +31,7 @@ export function getFileCategory(fileType: string, fileName: string): SharedFile[
 }
 
 // Format bytes to readable size
-export function formatBytes(bytes: number): string {
+export function formatBytes(bytes) {
   if (bytes === 0) return '0 Bytes';
   const k = 1024;
   const sizes = ['Bytes', 'KB', 'MB', 'GB'];
@@ -57,7 +40,7 @@ export function formatBytes(bytes: number): string {
 }
 
 // Local Storage for Config
-export function getSavedSyncConfig(): SupabaseConfig | null {
+export function getSavedSyncConfig() {
   try {
     const configStr = localStorage.getItem(SYNC_CONFIG_KEY);
     return configStr ? JSON.parse(configStr) : null;
@@ -67,7 +50,7 @@ export function getSavedSyncConfig(): SupabaseConfig | null {
   }
 }
 
-export function saveSyncConfig(config: SupabaseConfig | null): void {
+export function saveSyncConfig(config) {
   if (config) {
     localStorage.setItem(SYNC_CONFIG_KEY, JSON.stringify(config));
   } else {
@@ -76,10 +59,10 @@ export function saveSyncConfig(config: SupabaseConfig | null): void {
 }
 
 // Supabase client instance holder
-let supabaseInstance: SupabaseClient | null = null;
+let supabaseInstance = null;
 let currentConfigString = '';
 
-export function getSupabaseClient(config: SupabaseConfig | null): SupabaseClient | null {
+export function getSupabaseClient(config) {
   if (!config || !config.url || !config.anonKey) {
     supabaseInstance = null;
     currentConfigString = '';
@@ -104,9 +87,9 @@ export function getSupabaseClient(config: SupabaseConfig | null): SupabaseClient
 }
 
 // Metadata list retrieval
-export async function getMetadataList(): Promise<SharedFile[]> {
+export async function getMetadataList() {
   try {
-    const list = await get<SharedFile[]>(METADATA_KEY);
+    const list = await get(METADATA_KEY);
     return list || [];
   } catch (e) {
     console.error('Failed to fetch metadata list', e);
@@ -115,19 +98,19 @@ export async function getMetadataList(): Promise<SharedFile[]> {
 }
 
 // Save Metadata list locally
-export async function saveMetadataList(list: SharedFile[]): Promise<void> {
+export async function saveMetadataList(list) {
   await set(METADATA_KEY, list);
 }
 
 // Save File Blob locally
-export async function saveFileBlobLocal(id: string, blob: Blob): Promise<void> {
+export async function saveFileBlobLocal(id, blob) {
   await set(`file_blob_${id}`, blob);
 }
 
 // Get File Blob locally
-export async function getFileBlobLocal(id: string): Promise<Blob | null> {
+export async function getFileBlobLocal(id) {
   try {
-    const blob = await get<Blob>(`file_blob_${id}`);
+    const blob = await get(`file_blob_${id}`);
     return blob || null;
   } catch (e) {
     console.error(`Failed to fetch file blob ${id}`, e);
@@ -136,7 +119,7 @@ export async function getFileBlobLocal(id: string): Promise<Blob | null> {
 }
 
 // Delete File locally
-export async function deleteFileLocal(id: string): Promise<void> {
+export async function deleteFileLocal(id) {
   const list = await getMetadataList();
   const updatedList = list.filter(f => f.id !== id);
   await saveMetadataList(updatedList);
@@ -145,10 +128,7 @@ export async function deleteFileLocal(id: string): Promise<void> {
 
 // Sync local metadata with Supabase Cloud storage
 // It uploads any unsynced local file to Supabase and writes/updates the merged metadata.json file in Supabase.
-export async function syncWithCloud(
-  config: SupabaseConfig,
-  onProgress?: (text: string) => void
-): Promise<{ success: boolean; error?: string; updatedList: SharedFile[] }> {
+export async function syncWithCloud(config, onProgress) {
   const supabase = getSupabaseClient(config);
   if (!supabase) {
     return { success: false, error: 'Invalid Supabase client creation.', updatedList: [] };
@@ -158,7 +138,7 @@ export async function syncWithCloud(
     onProgress?.('Fetching cloud metadata...');
     
     // 1. Fetch metadata.json from Supabase Storage
-    let cloudList: SharedFile[] = [];
+    let cloudList = [];
     const { data: fileData, error: downloadError } = await supabase.storage
       .from(config.bucketName)
       .download('metadata.json');
@@ -178,14 +158,14 @@ export async function syncWithCloud(
     const localList = await getMetadataList();
 
     // Merge lists by ID (cloud takes priority for overlapping fields, but local is added if missing in cloud)
-    const mergedMap = new Map<string, SharedFile>();
+    const mergedMap = new Map();
     cloudList.forEach(f => mergedMap.set(f.id, f));
     localList.forEach(f => {
       if (!mergedMap.has(f.id)) {
         mergedMap.set(f.id, f);
       } else {
         // Keep synced local files in sync, update sync state
-        const cloudFile = mergedMap.get(f.id)!;
+        const cloudFile = mergedMap.get(f.id);
         mergedMap.set(f.id, {
           ...f,
           isSynced: true,
@@ -258,17 +238,14 @@ export async function syncWithCloud(
     await saveMetadataList(mergedList);
 
     return { success: true, updatedList: mergedList };
-  } catch (e: any) {
+  } catch (e) {
     console.error('Sync failed', e);
     return { success: false, error: e.message || 'Unknown sync error', updatedList: await getMetadataList() };
   }
 }
 
 // Download cloud file to local cache when clicked, or return public URL
-export async function getFileDownloadUrl(
-  file: SharedFile,
-  config: SupabaseConfig | null
-): Promise<string> {
+export async function getFileDownloadUrl(file, config) {
   // If local blob exists, use it first! It's super fast.
   const localBlob = await getFileBlobLocal(file.id);
   if (localBlob) {
@@ -308,10 +285,7 @@ export async function getFileDownloadUrl(
 }
 
 // Delete file from local AND cloud (if config exists)
-export async function deleteFileFromSpace(
-  file: SharedFile,
-  config: SupabaseConfig | null
-): Promise<SharedFile[]> {
+export async function deleteFileFromSpace(file, config) {
   // 1. Delete local blob and metadata
   await deleteFileLocal(file.id);
 
