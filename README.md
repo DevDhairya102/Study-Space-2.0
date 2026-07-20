@@ -7,6 +7,7 @@ You can preview the app locally at `http://localhost:5173` or deploy it directly
 ---
 
 ## 🖼️ UI Screenshots
+<img width="1531" height="719" alt="image" src="https://github.com/user-attachments/assets/13edcde4-7e16-45eb-9d07-63d7d29e7d25" />
 
 
 
